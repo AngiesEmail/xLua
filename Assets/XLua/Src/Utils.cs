@@ -38,27 +38,27 @@ namespace XLua
 	{
 		public static bool LoadField(RealStatePtr L, int idx, string field_name)
 		{
-			idx = idx > 0 ? idx : LuaAPI.lua_gettop(L) + idx + 1;// abs of index
-			LuaAPI.xlua_pushasciistring(L, field_name);
-			LuaAPI.lua_rawget(L, idx);
-			return !LuaAPI.lua_isnil(L, -1);
+			idx = idx > 0 ? idx : LuaAPI.lua_gettop(L) + idx + 1;// abs of index //idx如果是负值，代表从栈顶开始计算 lua_gettop代表获取栈顶索引，向下减idx+1
+ 			LuaAPI.xlua_pushasciistring(L, field_name);//向栈中push字段名
+			LuaAPI.lua_rawget(L, idx);//获取idx位置t的table 的栈顶的值k，压到栈中 t[k]
+			return !LuaAPI.lua_isnil(L, -1);//判定栈顶 是否为空，及代表是否获取成功
 		}
 
 		public static RealStatePtr GetMainState(RealStatePtr L)
 		{
 			RealStatePtr ret = default(RealStatePtr);
 			LuaAPI.xlua_pushasciistring(L, LuaEnv.MAIN_SHREAD);
-			LuaAPI.lua_rawget(L, LuaIndexes.LUA_REGISTRYINDEX);
-			if (LuaAPI.lua_isthread(L, -1))
+			LuaAPI.lua_rawget(L, LuaIndexes.LUA_REGISTRYINDEX);//获取idx位置t的table 的栈顶的值k，压到栈中 t[k]
+			if (LuaAPI.lua_isthread(L, -1))//判定栈顶是否是线程
 			{
-				ret = LuaAPI.lua_tothread(L, -1);
+				ret = LuaAPI.lua_tothread(L, -1);//类型转化为线程
 			}
-			LuaAPI.lua_pop(L, 1);
+			LuaAPI.lua_pop(L, 1);//把栈顶元素pop
 			return ret;
 		}
 
 #if (UNITY_WSA && !ENABLE_IL2CPP) && !UNITY_EDITOR
-        public static List<Assembly> _assemblies;
+        public static List<Assembly> _assemblies;//程序集
         public static List<Assembly> GetAssemblies()
         {
             if (_assemblies == null)
@@ -73,7 +73,7 @@ namespace XLua
             return _assemblies;
             
         }
-        public static async System.Threading.Tasks.Task<List<Assembly>> GetAssemblyList()
+        public static async System.Threading.Tasks.Task<List<Assembly>> GetAssemblyList()//加载程序集
         {
             List<Assembly> assemblies = new List<Assembly>();
             //return assemblies;
