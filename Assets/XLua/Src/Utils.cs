@@ -22,6 +22,13 @@ using RealStatePtr = System.IntPtr;
 using LuaCSFunction = XLua.LuaDLL.lua_CSFunction;
 #endif
 
+/*
+ * 属性和字段的区别
+ * 字段是非public的，不能被外部访问，但是如果都设置成public，又违背了封装性的原则
+ * 通过属性读取和写入字段（成员变量），是封装性的体现
+ * 属性是逻辑字段，是字段的扩展，不占用实际内存
+*/
+
 namespace XLua
 {
 	public enum LazyMemberTypes
@@ -40,8 +47,8 @@ namespace XLua
 		{
 			idx = idx > 0 ? idx : LuaAPI.lua_gettop(L) + idx + 1;// abs of index //idx如果是负值，代表从栈顶开始计算 lua_gettop代表获取栈顶索引，向下减idx+1
  			LuaAPI.xlua_pushasciistring(L, field_name);//向栈中push字段名
-			LuaAPI.lua_rawget(L, idx);//获取idx位置t的table 的栈顶的值k，压到栈中 t[k]
-			return !LuaAPI.lua_isnil(L, -1);//判定栈顶 是否为空，及代表是否获取成功
+			LuaAPI.lua_rawget(L, idx);//获取idx位置t的table 的栈顶的值k，压到栈中 v = t[k]
+			return !LuaAPI.lua_isnil(L, -1);//判定栈顶 是否为空，即代表是否获取成功
 		}
 
 		public static RealStatePtr GetMainState(RealStatePtr L)
@@ -108,7 +115,11 @@ namespace XLua
 		public static List<Type> GetAllTypes(bool exclude_generic_definition = true)
 		{
 			List<Type> allTypes = new List<Type>();
-			var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+			//AppDomain 应用程序域，应用程序执行的隔离环境。用于加载和执行程序集(Assembly)
+			//由AppDomain对象表示的应用程序域有助于为执行托管代码提供隔离、卸载和安全边界
+			//如程序集加载到默认应用程序域中，则无法在进程进行时将其从内存中卸载。但是如果打开第二个应用程序域来加载和执行程序集，则在卸载该应用程序域时会卸载程序集
+			//可减少偶尔使用大型DLL的长时间运行进程的工作集
+			var assemblies = AppDomain.CurrentDomain.GetAssemblies();//获取当前程序域已加载的程序集
 			for (int i = 0; i < assemblies.Length; i++)
 			{
 				try
@@ -117,6 +128,7 @@ namespace XLua
 					if (!(assemblies[i].ManifestModule is System.Reflection.Emit.ModuleBuilder))
 					{
 #endif
+						//where 迭代器
 						allTypes.AddRange(assemblies[i].GetTypes()
 						.Where(type => exclude_generic_definition ? !type.IsGenericTypeDefinition() : true)
 						);
@@ -135,6 +147,12 @@ namespace XLua
 
 		static LuaCSFunction genFieldGetter(Type type, FieldInfo field)
 		{
+			/*
+			 * => 拉姆达表达式 lambda 匿名函数 包含表达式和语句 左边是输入参数，右边是表达式或者语句块
+			 * FieldInfo 发现字段的属性并提供对字段元数据的访问
+			 * GetValue的参数:类的实例。如果是静态变量，不属于类的实例，所以参数是null
+			 * translator.PushAny压到栈中
+			 */
 			if (field.IsStatic)
 			{
 				return (RealStatePtr L) =>
@@ -311,7 +329,9 @@ namespace XLua
 				return 1;
 			};
 		}
-
+		/*
+		 * 枚举转换
+		 */
 		static LuaCSFunction genEnumCastFrom(Type type)
 		{
 			return (RealStatePtr L) =>
